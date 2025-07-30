@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>vit-torch-profiling | Sunhanyu-Learning</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="1.前置知识 flops和算法复杂度  2.torch.profiler 代码如下：12345678910111213141516171819202122232425262728293031323334353637383940414243# vit_profiler.pyimport torchfrom torch.profiler import profile, record_function,">
+<meta property="og:type" content="article">
+<meta property="og:title" content="vit-torch-profiling">
+<meta property="og:url" content="http://example.com/2025/07/28/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/vit-profiling/index.html">
+<meta property="og:site_name" content="Sunhanyu-Learning">
+<meta property="og:description" content="1.前置知识 flops和算法复杂度  2.torch.profiler 代码如下：12345678910111213141516171819202122232425262728293031323334353637383940414243# vit_profiler.pyimport torchfrom torch.profiler import profile, record_function,">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2025-07-28T06:08:36.000Z">
+<meta property="article:modified_time" content="2025-07-29T04:02:23.862Z">
+<meta property="article:author" content="sunhanyu">
+<meta property="article:tag" content="vit">
+<meta property="article:tag" content="vit-pytorch">
+<meta property="article:tag" content="profiling">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Sunhanyu-Learning" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css">
+
+<meta name="generator" content="Hexo 7.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Sunhanyu-Learning</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-推理加速/vit-profiling" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2025/07/28/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/vit-profiling/" class="article-date">
+  <time class="dt-published" datetime="2025-07-28T06:08:36.000Z" itemprop="datePublished">2025-07-28</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/">推理加速</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      vit-torch-profiling
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h1 id="1-前置知识"><a href="#1-前置知识" class="headerlink" title="1.前置知识"></a>1.前置知识</h1><ul>
+<li><a href="../%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/flops%E5%92%8C%E8%AE%A1%E7%AE%97%E5%A4%8D%E6%9D%82%E5%BA%A6.md">flops和算法复杂度</a></li>
+</ul>
+<h1 id="2-torch-profiler"><a href="#2-torch-profiler" class="headerlink" title="2.torch.profiler"></a>2.torch.profiler</h1><ul>
+<li>代码如下：<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># vit_profiler.py</span></span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">from</span> torch.profiler <span class="keyword">import</span> profile, record_function, ProfilerActivity</span><br><span class="line"><span class="keyword">from</span> vit_pytorch.efficient <span class="keyword">import</span> ViT  </span><br><span class="line"><span class="keyword">from</span> linformer <span class="keyword">import</span> Linformer</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line">device = torch.device(<span class="string">&quot;cuda&quot;</span>)</span><br><span class="line"></span><br><span class="line">efficient_transformer = Linformer(</span><br><span class="line">    dim=<span class="number">128</span>,</span><br><span class="line">    seq_len=<span class="number">49</span>+<span class="number">1</span>,  <span class="comment"># 7x7 patches + 1 cls-token</span></span><br><span class="line">    depth=<span class="number">12</span>,</span><br><span class="line">    heads=<span class="number">8</span>,</span><br><span class="line">    k=<span class="number">64</span></span><br><span class="line">)</span><br><span class="line">model = ViT(</span><br><span class="line">    dim=<span class="number">128</span>,</span><br><span class="line">    image_size=<span class="number">224</span>,</span><br><span class="line">    patch_size=<span class="number">32</span>,</span><br><span class="line">    num_classes=<span class="number">2</span>,</span><br><span class="line">    transformer=efficient_transformer,</span><br><span class="line">    channels=<span class="number">3</span>,</span><br><span class="line">).to(device)</span><br><span class="line">model = nn.DataParallel(model)</span><br><span class="line">model.load_state_dict(torch.load(<span class="string">&quot;model/best_model_vit1.pth&quot;</span>, map_location=<span class="string">&quot;cpu&quot;</span>))</span><br><span class="line">model.<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line">dummy_input = torch.randn(<span class="number">1</span>, <span class="number">3</span>, <span class="number">224</span>, <span class="number">224</span>).to(device)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> profile(</span><br><span class="line">    activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],</span><br><span class="line">    record_shapes=<span class="literal">True</span>,</span><br><span class="line">    with_flops=<span class="literal">True</span>,</span><br><span class="line">    profile_memory=<span class="literal">True</span>,</span><br><span class="line">    on_trace_ready=torch.profiler.tensorboard_trace_handler(<span class="string">&quot;profiling/vit_trace&quot;</span>)</span><br><span class="line">) <span class="keyword">as</span> prof:</span><br><span class="line">    <span class="keyword">with</span> torch.no_grad():</span><br><span class="line">        <span class="keyword">with</span> record_function(<span class="string">&quot;vit_inference&quot;</span>):</span><br><span class="line">            model(dummy_input)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&quot;profiling/vit_profile_summary.md&quot;</span>, <span class="string">&quot;w&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    f.write(prof.key_averages().table(sort_by=<span class="string">&quot;cuda_time_total&quot;</span>, row_limit=<span class="number">30</span>))</span><br></pre></td></tr></table></figure></li>
+<li>运行结果使用tensorboard查看：<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tensorboard --logdir=profiling/vit_trace</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ol start="3">
+<li>flops统计<br>  在 Transformer 或 ViT 等模型中，隐藏维度（如 embedding dim） 决定了绝大多数算子的计算量，例如：<ul>
+<li>Linear: FLOPs -&gt; 输入维度 × 输出维度</li>
+<li>MatMul: FLOPs -&gt; hidden_dim² × 序列长度</li>
+<li>FFN: 通常是 hidden_dim → 4×hidden_dim → hidden_dim，两个linear层，FLOPs 非常大</li>
+</ul>
+</li>
+</ol>
+<ul>
+<li>hidden_dim 增加 6 倍后，FLOPs 增加 hidden_dim² 倍</li>
+<li>测试代码如下：</li>
+</ul>
+  <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">##hidden_dim = 768</span></span><br><span class="line"><span class="keyword">from</span> ptflops <span class="keyword">import</span> get_model_complexity_info</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">from</span> torch.profiler <span class="keyword">import</span> profile, record_function, ProfilerActivity</span><br><span class="line"><span class="keyword">from</span> vit_pytorch.efficient <span class="keyword">import</span> ViT <span class="keyword">as</span> ViT_linformer</span><br><span class="line"><span class="keyword">from</span> linformer <span class="keyword">import</span> Linformer</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"><span class="keyword">from</span> vit_pytorch <span class="keyword">import</span> ViT</span><br><span class="line"></span><br><span class="line">efficient_transformer = Linformer(</span><br><span class="line">    dim=<span class="number">768</span>,</span><br><span class="line">    seq_len=<span class="number">49</span>+<span class="number">1</span>,  <span class="comment"># 7x7 patches + 1 cls-token</span></span><br><span class="line">    depth=<span class="number">12</span>,</span><br><span class="line">    heads=<span class="number">8</span>,</span><br><span class="line">    k=<span class="number">20</span></span><br><span class="line">)</span><br><span class="line">models = &#123;</span><br><span class="line">    <span class="string">&quot;linformer&quot;</span>: ViT_linformer(dim=<span class="number">768</span>,</span><br><span class="line">        image_size=<span class="number">224</span>,</span><br><span class="line">        patch_size=<span class="number">32</span>,</span><br><span class="line">        num_classes=<span class="number">2</span>,</span><br><span class="line">        transformer=efficient_transformer,</span><br><span class="line">        channels=<span class="number">3</span>),</span><br><span class="line">    <span class="string">&quot;mha&quot;</span>: ViT( dim=<span class="number">768</span>,</span><br><span class="line">        image_size=<span class="number">224</span>,</span><br><span class="line">        patch_size=<span class="number">32</span>,</span><br><span class="line">        num_classes=<span class="number">2</span>,</span><br><span class="line">        depth=<span class="number">12</span>, heads=<span class="number">8</span>, mlp_dim= <span class="number">768</span>*<span class="number">4</span>,</span><br><span class="line">        )</span><br><span class="line">&#125;</span><br><span class="line">macs, params = get_model_complexity_info(models[<span class="string">&#x27;mha&#x27;</span>], (<span class="number">3</span>, <span class="number">224</span>, <span class="number">224</span>))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;FLOPs: <span class="subst">&#123;macs * <span class="number">2</span>&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment">#macs, params = get_model_complexity_info(models[&#x27;linformer&#x27;], (3, 224, 224))</span></span><br><span class="line"><span class="comment">#print(f&quot;FLOPs: &#123;macs * 2&#125;&quot;)</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>运行结果如下:</li>
+</ul>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">ViT(</span><br><span class="line">  77.96 M, 99.950% Params, 3.9 GMac, 99.165% MACs, </span><br><span class="line">  (to_patch_embedding): Sequential(</span><br><span class="line">    2.37 M, 3.036% Params, 115.83 MMac, 2.948% MACs, </span><br><span class="line">    (0): Rearrange(&#x27;b c (h p1) (w p2) -&gt; b (h w) (p1 p2 c)&#x27;, p1=32, p2=32)</span><br><span class="line">    (1): LayerNorm(6.14 k, 0.008% Params, 150.53 KMac, 0.004% MACs, (3072,), eps=1e-05, elementwise_affine=True)</span><br><span class="line">    (2): Linear(2.36 M, 3.026% Params, 115.64 MMac, 2.943% MACs, in_features=3072, out_features=768, bias=True)</span><br><span class="line">    (3): LayerNorm(1.54 k, 0.002% Params, 37.63 KMac, 0.001% MACs, (768,), eps=1e-05, elementwise_affine=True)</span><br><span class="line">  )</span><br><span class="line">  (dropout): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)</span><br><span class="line">  (transformer): Transformer(</span><br><span class="line">    75.59 M, 96.912% Params, 3.78 GMac, 96.217% MACs, </span><br><span class="line">    (norm): LayerNorm(1.54 k, 0.002% Params, 38.4 KMac, 0.001% MACs, (768,), eps=1e-05, elementwise_affine=True)</span><br><span class="line">    (layers): ModuleList(</span><br><span class="line">      (0-11): 12 x ModuleList(</span><br><span class="line">        (0): Attention(</span><br><span class="line">          1.58 M, 2.019% Params, 78.72 MMac, 2.004% MACs, </span><br><span class="line">          (norm): LayerNorm(1.54 k, 0.002% Params, 38.4 KMac, 0.001% MACs, (768,), eps=1e-05, elementwise_affine=True)</span><br><span class="line">          (attend): Softmax(0, 0.000% Params, 0.0 Mac, 0.000% MACs, dim=-1)</span><br><span class="line">          (dropout): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)</span><br><span class="line">          (to_qkv): Linear(1.18 M, 1.512% Params, 58.98 MMac, 1.501% MACs, in_features=768, out_features=1536, bias=False)</span><br><span class="line">          (to_out): Sequential(</span><br><span class="line">            393.98 k, 0.505% Params, 19.7 MMac, 0.501% MACs, </span><br><span class="line">            (0): Linear(393.98 k, 0.505% Params, 19.7 MMac, 0.501% MACs, in_features=512, out_features=768, bias=True)</span><br><span class="line">            (1): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)</span><br><span class="line">          )</span><br><span class="line">        )</span><br><span class="line">        (1): FeedForward(</span><br><span class="line">          4.72 M, 6.056% Params, 236.31 MMac, 6.014% MACs, </span><br><span class="line">          (net): Sequential(</span><br><span class="line">            4.72 M, 6.056% Params, 236.31 MMac, 6.014% MACs, </span><br><span class="line">            (0): LayerNorm(1.54 k, 0.002% Params, 38.4 KMac, 0.001% MACs, (768,), eps=1e-05, elementwise_affine=True)</span><br><span class="line">            (1): Linear(2.36 M, 3.029% Params, 118.12 MMac, 3.006% MACs, in_features=768, out_features=3072, bias=True)</span><br><span class="line">            (2): GELU(0, 0.000% Params, 153.6 KMac, 0.004% MACs, approximate=&#x27;none&#x27;)</span><br><span class="line">            (3): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)</span><br><span class="line">            (4): Linear(2.36 M, 3.026% Params, 118.0 MMac, 3.003% MACs, in_features=3072, out_features=768, bias=True)</span><br><span class="line">            (5): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)</span><br><span class="line">          )</span><br><span class="line">        )</span><br><span class="line">      )</span><br><span class="line">    )</span><br><span class="line">  )</span><br><span class="line">  (to_latent): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )</span><br><span class="line">  (mlp_head): Linear(1.54 k, 0.002% Params, 1.54 KMac, 0.000% MACs, in_features=768, out_features=2, bias=True)</span><br><span class="line">)</span><br><span class="line">FLOPs: 3.93 GMac</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2025/07/28/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/vit-profiling/" data-id="cmdpbmn2s00195qx9alf3ax26" data-title="vit-torch-profiling" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/profiling/" rel="tag">profiling</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/vit/" rel="tag">vit</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/vit-pytorch/" rel="tag">vit-pytorch</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week5/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Week5</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/markdown/">markdown</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%91%A8%E8%AE%A1%E5%88%92/">周计划</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/">推理加速</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/FLOPS/" rel="tag">FLOPS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Transformer/" rel="tag">Transformer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/attention/" rel="tag">attention</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/conv/" rel="tag">conv</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linformer/" rel="tag">linformer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/profiling/" rel="tag">profiling</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/vit/" rel="tag">vit</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/vit-pytorch/" rel="tag">vit-pytorch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/week1/" rel="tag">week1</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B0%8F%E6%8A%80%E5%B7%A7/" rel="tag">小技巧</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%98%BE%E5%AD%98%E5%8D%A0%E7%94%A8/" rel="tag">显存占用</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6/" rel="tag">算法复杂度</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BF%90%E7%AE%97%E9%87%8F/" rel="tag">运算量</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/FLOPS/" style="font-size: 10px;">FLOPS</a> <a href="/tags/Transformer/" style="font-size: 10px;">Transformer</a> <a href="/tags/attention/" style="font-size: 20px;">attention</a> <a href="/tags/conv/" style="font-size: 10px;">conv</a> <a href="/tags/linformer/" style="font-size: 10px;">linformer</a> <a href="/tags/profiling/" style="font-size: 10px;">profiling</a> <a href="/tags/vit/" style="font-size: 20px;">vit</a> <a href="/tags/vit-pytorch/" style="font-size: 20px;">vit-pytorch</a> <a href="/tags/week1/" style="font-size: 10px;">week1</a> <a href="/tags/%E5%B0%8F%E6%8A%80%E5%B7%A7/" style="font-size: 10px;">小技巧</a> <a href="/tags/%E6%98%BE%E5%AD%98%E5%8D%A0%E7%94%A8/" style="font-size: 10px;">显存占用</a> <a href="/tags/%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6/" style="font-size: 10px;">算法复杂度</a> <a href="/tags/%E8%BF%90%E7%AE%97%E9%87%8F/" style="font-size: 10px;">运算量</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2025/07/">July 2025</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2025/07/28/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/vit-profiling/">vit-torch-profiling</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week5/">Week5</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week4/">Week4</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week3/">Week3</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week2/">Week2</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2025 sunhanyu<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

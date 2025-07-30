@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>vit源码详解(linformer) | Sunhanyu-Learning</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="1.什么是FLOPs？FLOPs（floating point operations）是计算机科学中的一个概念，表示一个计算设备（如CPU或GPU）执行单个运算所需的浮点运算次数。 如attention中的Q.shape&#x3D;[B, N, C]，K.shape&#x3D;[B, N, C]，V.shape&#x3D;[B, N, C]，那么QK.T.shape&#x3D;[B, N, N]，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="vit源码详解(linformer)">
+<meta property="og:url" content="http://example.com/2025/07/28/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/flops%E5%92%8C%E8%AE%A1%E7%AE%97%E5%A4%8D%E6%9D%82%E5%BA%A6/index.html">
+<meta property="og:site_name" content="Sunhanyu-Learning">
+<meta property="og:description" content="1.什么是FLOPs？FLOPs（floating point operations）是计算机科学中的一个概念，表示一个计算设备（如CPU或GPU）执行单个运算所需的浮点运算次数。 如attention中的Q.shape&#x3D;[B, N, C]，K.shape&#x3D;[B, N, C]，V.shape&#x3D;[B, N, C]，那么QK.T.shape&#x3D;[B, N, N]，">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2025-07-27T16:00:00.000Z">
+<meta property="article:modified_time" content="2025-07-29T15:57:18.802Z">
+<meta property="article:author" content="sunhanyu">
+<meta property="article:tag" content="FLOPS">
+<meta property="article:tag" content="算法复杂度">
+<meta property="article:tag" content="attention">
+<meta property="article:tag" content="运算量">
+<meta property="article:tag" content="显存占用">
+<meta property="article:tag" content="conv">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Sunhanyu-Learning" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css">
+
+<meta name="generator" content="Hexo 7.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Sunhanyu-Learning</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-基础知识/flops和计算复杂度" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2025/07/28/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/flops%E5%92%8C%E8%AE%A1%E7%AE%97%E5%A4%8D%E6%9D%82%E5%BA%A6/" class="article-date">
+  <time class="dt-published" datetime="2025-07-27T16:00:00.000Z" itemprop="datePublished">2025-07-28</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      vit源码详解(linformer)
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h1 id="1-什么是FLOPs？"><a href="#1-什么是FLOPs？" class="headerlink" title="1.什么是FLOPs？"></a>1.什么是FLOPs？</h1><p>FLOPs（floating point operations）是计算机科学中的一个概念，表示一个计算设备（如CPU或GPU）执行单个运算所需的浮点运算次数。</p>
+<p>如attention中的Q.shape&#x3D;[B, N, C]，K.shape&#x3D;[B, N, C]，V.shape&#x3D;[B, N, C]，那么Q<em>K.T.shape&#x3D;[B, N, N]，那么Q</em>K.T的FLOPs为B<em>N</em>N<em>C</em>2,具体解释为最终计算后的shape为[B, N, N]，那么N<em>N个位置进行2</em>C的乘加运算，B次。</p>
+<h1 id="2-什么是算法复杂度？"><a href="#2-什么是算法复杂度？" class="headerlink" title="2.什么是算法复杂度？"></a>2.什么是算法复杂度？</h1><p>算法复杂度（Algorithm Complexity）是计算机科学中的一个概念，用于描述一个算法的运行效率。<br>算法复杂度通常用Big O notation来表示，比如O(n^2)表示一个算法的时间复杂度为n的平方。<br>如attention中的Q.shape&#x3D;[B, N, C]，K.shape&#x3D;[B, N, C]，V.shape&#x3D;[B, N, C]，那么Q*K.T的算法复杂度为O($N^2C$)</p>
+<p>那么，对于长序列来说N就是瓶颈，对于短序列来说C也就是隐藏层的维度就是瓶颈。</p>
+<h1 id="3-float量化成int减少的是什么？"><a href="#3-float量化成int减少的是什么？" class="headerlink" title="3.float量化成int减少的是什么？"></a>3.float量化成int减少的是什么？</h1><ul>
+<li>减少的内存占用和内存带宽压力</li>
+<li>float32 4个字节 int4 0.5个字节 节省显存87.5% </li>
+<li>int4的mac计算次数不会变化，但是单次的mac计算的消耗更低。</li>
+</ul>
+<h1 id="4-参数量，显存占用和运算量的区别"><a href="#4-参数量，显存占用和运算量的区别" class="headerlink" title="4.参数量，显存占用和运算量的区别"></a>4.参数量，显存占用和运算量的区别</h1><ul>
+<li>参数量：参数数量，即模型中可训练的参数数量。以某层的 Query 权重矩阵 W_q 为例，输入维度是 d&#x3D;4096，输出也是 d_k&#x3D;4096，那么参数量为 4096 * 4096 &#x3D; 16,777,216 约等于 1.68M。</li>
+<li>显存占用：模型运行时在显存的占用量。除了模型每层的权重矩阵参数需要显存占用外，还要考虑每层attention的中间输出（activations），还有attention中保存的 Key&#x2F;Value 用于加速解码。<ul>
+<li>权重参数占用：以fp16为例子，7B模型参数占用为：7B ✖️ 2  &#x3D; 14B</li>
+<li>KV占用：（layers * batch_size * seq_len * hidden_size） * 2）* 2B</li>
+</ul>
+</li>
+<li>运算量（FLOPs）：推理（或训练）所需的浮点运算次数（Floating Point Operations）。一加一乘相当于2FLOPs。</li>
+</ul>
+<h1 id="5-conv的flops，参数量和显存占用"><a href="#5-conv的flops，参数量和显存占用" class="headerlink" title="5. conv的flops，参数量和显存占用"></a>5. conv的flops，参数量和显存占用</h1><ul>
+<li>每个输出位置做一次卷积核的 dot product，每个卷积核的参数个数为 Cin × Kh × Kw，输出大小是 Hout × Wout，一共Cout 个卷积核，那么</li>
+<li>FLOPs计算量为：<code>FLOPs = 2 × Cout × Hout × Wout × Cin × Kh × Kw x Batch</code><br>  •Cout: 输出通道数<br>  •Hout, Wout: 输出特征图的高和宽<br>  •Cin: 输入通道数<br>  •Kh, Kw: 卷积核的高和宽（Kernel Height &#x2F; Width）<br>  •2: 表示一次乘法 + 一次加法（MAC 操作算两次 FLOPs）</li>
+<li>参数量：每个卷积核大小为：Cin × Kh × Kw，共 C_out 个卷积核 → 总参数量为：<code>Params_conv = C_out × C_in × K × K</code></li>
+<li>显存占用：这里的显存占用主要计算的是激活值的占用<code>Memory_conv ≈ Batch × C_out × H_out × W_out × sizeof(float/int)</code><ul>
+<li>其中float32占4字节，float16占2个字节，int8占1字节，int4占0.5个字节.</li>
+</ul>
+</li>
+</ul>
+<h1 id="6-attention的flops，参数量和显存占用"><a href="#6-attention的flops，参数量和显存占用" class="headerlink" title="6. attention的flops，参数量和显存占用"></a>6. attention的flops，参数量和显存占用</h1><ul>
+<li>输入维度：B × L × D（batch, seq_len, embedding_dim）</li>
+<li>假设用标准 QKV 注意力机制，head 数为 H，每个 head 维度为 d &#x3D; D &#x2F; H</li>
+<li>主要包含四个线性层：QKV+输出映射，一个layernorm层可学习参数的参数量为2D，线性层的bias的参数量为D-&gt;4D</li>
+<li>参数量：<code>Params_attn = 3 × D × D [+ D × D]≈ 4 × D × D + 6D</code></li>
+<li>FLOPS主要来源四个线性层的计算和Q<em>K，A</em>V的计算</li>
+<li>FLOPS：<code>FLOPs_attn = 4 × Batch x 2 x D × D x L + Batch x 2 × D × L x L + Batch x 2 × D × L x L</code></li>
+<li>显存占用：<ul>
+<li>attention的显存占用包括QKV的输入x，占用显存大小为2BLD。</li>
+<li>QK计算的输入Q，K，占用显存大小为4BLD，</li>
+<li>softmax计算保存QK的结果2BL^2a,其中a指的是head的数量。</li>
+<li>softmax后的dropout需要一个QK维度相同的矩阵，占用显存大小为BL^2a，因为mask矩阵的占用字节数为1 bytes。</li>
+<li>A*V的输入A，V，占用显存大小为2BL^2a+2BLD。</li>
+<li>最后计算输出映射需要保存输入，占用显存大小为2BLD。再加上dropout矩阵，占用显存大小为BLD。</li>
+<li>最终中间激活占用的显存大小为11BLD+5BL^2a。</li>
+<li>还有一个layer norm，输入的占用显存大小为2BLD。</li>
+</ul>
+</li>
+</ul>
+<h1 id="7-MLP的flops，参数量和显存占用"><a href="#7-MLP的flops，参数量和显存占用" class="headerlink" title="7. MLP的flops，参数量和显存占用"></a>7. MLP的flops，参数量和显存占用</h1><ul>
+<li>输入维度：B × L × D（batch, seq_len, embedding_dim）</li>
+<li>假设用标准 MLP 映射，hidden_dim 为 4*D</li>
+<li>主要包括两个线性层：升维+降维，一个layernorm层可学习参数的参数量为2D，线性层的bias的参数量为D+4D</li>
+<li>参数量：<code>Params_mlp = 2 × D × hidden_dim ≈ 8 × D × D +7D</code></li>
+<li>FLOPs主要来源两个线性层</li>
+<li>FLOPS：<code>FLOPS_mlp = 2 x Batch x 2 × D × hidden_dim x L </code></li>
+<li>显存占用：<ul>
+<li>第一个线性层需要保存其输入，占用显存大小为2BLD</li>
+<li>激活函数需要保存输入，占用显存大小为8BLD</li>
+<li>第2个线性层需要保存其输入，占用显存大小为2BLD</li>
+<li>dropout需要保存输入，占用显存大小为BLD</li>
+<li>最终保存的显存大小为19BLD.</li>
+<li>还有一个LayerNorm层，需要保存其输入，占用显存大小为2BLD</li>
+</ul>
+</li>
+</ul>
+<h1 id="8-l层transformer的floops，参数量和显存占用"><a href="#8-l层transformer的floops，参数量和显存占用" class="headerlink" title="8. l层transformer的floops，参数量和显存占用"></a>8. l层transformer的floops，参数量和显存占用</h1><ul>
+<li>参数量：<code>Params_transformer = Params_attn + Params_mlp ≈ l x (4 × D × D + 8 × D × D) + 13D x l</code>，总计约等于$12lD^2$<br>例如不同的llama，隐藏层的维度不同，模型的参数量也不同。<br>｜实际参数量 ｜隐藏维度h ｜层数l	｜12lh^2｜<br>｜———-｜———｜——–｜——｜<br>｜	6.7B	｜4096	｜32	 ｜6,442,450,944｜<br>｜	13.0B	｜5120	｜40	 ｜12,582,912,000｜<br>｜	32.5B	｜6656	｜60	 ｜31,897,681,920｜<br>｜	65.2B	｜8192	｜80	 ｜64,424,509,440｜</li>
+<li>flops ：$FLOPS_{transformer} &#x3D; FLOPS{attn} + FLOPS{mlp} ≈ l(24BLD^2 + 4BL^2D) &#x3D; 24lBLD^2$</li>
+<li>flops和参数量之间的关系近似为BL个token需要进行一个乘法一个加法运算&#x3D;2BL。</li>
+<li>显存占用：<ul>
+<li>transformer层需要保存的中间激活占用显存大小为 $(34BLD+5BL^2a)*l$。</li>
+<li>对比一个llama 7b的模型，隐藏层维度D为4096，l&#x3D;32层，序列长度L为2048，a&#x3D;1，那么他的显存占用在不同的batch size下对比：</li>
+<li>7b模型的显存占用为14G。</li>
+<li>$batchsize &#x3D; 1 -&gt; (34<em>1</em>2048<em>4096+5</em>1<em>2048</em>2048*1)*32&#x3D;306184192×32&#x3D;9797894144&#x3D;9.7G$</li>
+<li>$batchsize &#x3D; 3 -&gt; (34<em>3</em>2048<em>4096+5</em>3<em>2048</em>2048*1)*32&#x3D;29393682432&#x3D;29.4G$</li>
+<li>$batchsize &#x3D; 32 -&gt; (34<em>32</em>2048<em>4096+5</em>32<em>2048</em>2048*1)*32&#x3D;313532612608&#x3D;313.5G$</li>
+<li>如上述计算所示，模型的显存占用随batch size的增大而增大。一次需要通过激活重计算、flash attention等方式优化显存占用。</li>
+</ul>
+</li>
+</ul>
+<h1 id="9-KV-cache的显存占用分析"><a href="#9-KV-cache的显存占用分析" class="headerlink" title="9. KV cache的显存占用分析"></a>9. KV cache的显存占用分析</h1><ul>
+<li>假设输入序列的长度为n ，输出序列的长度为n，以float16来保存KV cache，那么KV cache的峰值显存占用大小为2<em>2</em>(s+n)<em>B</em>D。这里第一个2表示K&#x2F;V cache，第二个2表示float16占2个bytes。</li>
+<li>优化kv cache的显存占用方法有：量化、共享kv等。</li>
+</ul>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><p>[1] <a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/624740065?s_r=0">分析transfomer的参数量和计算量以及中间激活、kv cache</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2025/07/28/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/flops%E5%92%8C%E8%AE%A1%E7%AE%97%E5%A4%8D%E6%9D%82%E5%BA%A6/" data-id="cmdpbmn2m000e5qx9816m8k54" data-title="vit源码详解(linformer)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/FLOPS/" rel="tag">FLOPS</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/attention/" rel="tag">attention</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/conv/" rel="tag">conv</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%98%BE%E5%AD%98%E5%8D%A0%E7%94%A8/" rel="tag">显存占用</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6/" rel="tag">算法复杂度</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E8%BF%90%E7%AE%97%E9%87%8F/" rel="tag">运算量</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week1/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Week1
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2025/07/27/hello-world/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Hello World</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/markdown/">markdown</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%91%A8%E8%AE%A1%E5%88%92/">周计划</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/">推理加速</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/FLOPS/" rel="tag">FLOPS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Transformer/" rel="tag">Transformer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/attention/" rel="tag">attention</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/conv/" rel="tag">conv</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linformer/" rel="tag">linformer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/profiling/" rel="tag">profiling</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/vit/" rel="tag">vit</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/vit-pytorch/" rel="tag">vit-pytorch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/week1/" rel="tag">week1</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B0%8F%E6%8A%80%E5%B7%A7/" rel="tag">小技巧</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%98%BE%E5%AD%98%E5%8D%A0%E7%94%A8/" rel="tag">显存占用</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6/" rel="tag">算法复杂度</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BF%90%E7%AE%97%E9%87%8F/" rel="tag">运算量</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/FLOPS/" style="font-size: 10px;">FLOPS</a> <a href="/tags/Transformer/" style="font-size: 10px;">Transformer</a> <a href="/tags/attention/" style="font-size: 20px;">attention</a> <a href="/tags/conv/" style="font-size: 10px;">conv</a> <a href="/tags/linformer/" style="font-size: 10px;">linformer</a> <a href="/tags/profiling/" style="font-size: 10px;">profiling</a> <a href="/tags/vit/" style="font-size: 20px;">vit</a> <a href="/tags/vit-pytorch/" style="font-size: 20px;">vit-pytorch</a> <a href="/tags/week1/" style="font-size: 10px;">week1</a> <a href="/tags/%E5%B0%8F%E6%8A%80%E5%B7%A7/" style="font-size: 10px;">小技巧</a> <a href="/tags/%E6%98%BE%E5%AD%98%E5%8D%A0%E7%94%A8/" style="font-size: 10px;">显存占用</a> <a href="/tags/%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6/" style="font-size: 10px;">算法复杂度</a> <a href="/tags/%E8%BF%90%E7%AE%97%E9%87%8F/" style="font-size: 10px;">运算量</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2025/07/">July 2025</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2025/07/28/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/vit-profiling/">vit-torch-profiling</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week5/">Week5</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week4/">Week4</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week3/">Week3</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/28/%E5%91%A8%E8%AE%A1%E5%88%92/Week2/">Week2</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2025 sunhanyu<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

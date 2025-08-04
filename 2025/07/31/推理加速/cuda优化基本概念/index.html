@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>resize_cuda | Sunhanyu-Learning</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="1.基础cuda编程能力   知识点 说明    线程索引计算 使用 threadIdx &#x2F; blockIdx &#x2F; blockDim 正确计算每个线程处理的像素位置。必须知道如何从 grid 定位图像中的 x, y。   全局内存访问 使用 src &#x2F; dst 指针访问图像像素值（如 src[y * width + x]），注意 stride 和通道数（C）影响。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="resize_cuda">
+<meta property="og:url" content="http://example.com/2025/07/31/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/cuda%E4%BC%98%E5%8C%96%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/index.html">
+<meta property="og:site_name" content="Sunhanyu-Learning">
+<meta property="og:description" content="1.基础cuda编程能力   知识点 说明    线程索引计算 使用 threadIdx &#x2F; blockIdx &#x2F; blockDim 正确计算每个线程处理的像素位置。必须知道如何从 grid 定位图像中的 x, y。   全局内存访问 使用 src &#x2F; dst 指针访问图像像素值（如 src[y * width + x]），注意 stride 和通道数（C）影响。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2025-07-31T02:52:51.000Z">
+<meta property="article:modified_time" content="2025-08-04T09:25:33.426Z">
+<meta property="article:author" content="sunhanyu">
+<meta property="article:tag" content="cuda加速">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Sunhanyu-Learning" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css">
+
+<meta name="generator" content="Hexo 7.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Sunhanyu-Learning</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-推理加速/cuda优化基本概念" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2025/07/31/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/cuda%E4%BC%98%E5%8C%96%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" class="article-date">
+  <time class="dt-published" datetime="2025-07-31T02:52:51.000Z" itemprop="datePublished">2025-07-31</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      resize_cuda
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h1 id="1-基础cuda编程能力"><a href="#1-基础cuda编程能力" class="headerlink" title="1.基础cuda编程能力"></a>1.基础cuda编程能力</h1><table>
+<thead>
+<tr>
+<th align="left">知识点</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">线程索引计算</td>
+<td align="left">使用 threadIdx &#x2F; blockIdx &#x2F; blockDim 正确计算每个线程处理的像素位置。必须知道如何从 grid 定位图像中的 x, y。</td>
+</tr>
+<tr>
+<td align="left">全局内存访问</td>
+<td align="left">使用 src &#x2F; dst 指针访问图像像素值（如 src[y * width + x]），注意 stride 和通道数（C）影响。</td>
+</tr>
+<tr>
+<td align="left">共享内存 &#x2F; 寄存器</td>
+<td align="left">了解何时需要将邻域像素放到共享内存提高访问速度（尤其双线性插值涉及周围 4 个像素）。</td>
+</tr>
+<tr>
+<td align="left">条件边界处理</td>
+<td align="left">处理 resize 边界时容易越界，需要特别判断 x, y 合法性。</td>
+</tr>
+<tr>
+<td align="left">数据类型与转换</td>
+<td align="left">图像数据常是 uint8，要乘上 scale 转为 float32，还可能涉及归一化（&#x2F;255），再转回 uchar。</td>
+</tr>
+<tr>
+<td align="left">CUDA 核函数定义</td>
+<td align="left">正确书写 <strong>global</strong> void resize(…)，并能从 host 侧 launch kernel，传入设备指针和参数。</td>
+</tr>
+<tr>
+<td align="left">CUDA 设备内存管理</td>
+<td align="left">使用 cudaMalloc、cudaMemcpy 管理输入输出数据到 GPU。</td>
+</tr>
+</tbody></table>
+<h1 id="2-基本概念"><a href="#2-基本概念" class="headerlink" title="2.基本概念"></a>2.基本概念</h1><ul>
+<li>主机：将CPU及系统的内存(内存条)称为主机;</li>
+<li>设备：将GPU及GPU本身的显示内存称为设备;</li>
+<li>线程(Thread)：一般通过GPU的一个核进行处理;</li>
+<li>线程块(Block)：由多个线程组成；各block是并行执行的，block间无法通信，也没有执行顺序。</li>
+<li>线程格(Grid)：由多个线程块组成。</li>
+<li>核函数(Kernel)：在GPU上执行的函数通常称为核函数;一般通过标识符**<strong>global</strong>**修饰，调用通过&lt;&lt;&lt;参数1,参数2&gt;&gt;&gt;，用于说明内核函数中的线程数量，以及线程是如何组织的。</li>
+<li>直观理解一下：1个线程格（grid），里面包含了多个线程块（block），每个线程块里面又包含了多个线程(thread)。线程是最小的单位了。</li>
+</ul>
+<h1 id="3-threadIdx、blockIdx、blockDim和gridDim"><a href="#3-threadIdx、blockIdx、blockDim和gridDim" class="headerlink" title="3.threadIdx、blockIdx、blockDim和gridDim"></a>3.threadIdx、blockIdx、blockDim和gridDim</h1><p>  <em>我们把线程格和线程块都看作一个三维的矩阵。这里假设线程格是一个3</em>3<em>3的三维矩阵， 线程块是一个4</em>4<em>4的三维矩阵。</em></p>
+<h2 id="gridDim"><a href="#gridDim" class="headerlink" title="gridDim"></a>gridDim</h2><p>gridDim.x、gridDim.y、gridDim.z分别表示线程格各个维度的大小。</p>
+<ul>
+<li>gridDim.x &#x3D; 3：线程格在x轴方向的线程块数量。</li>
+<li>gridDim.y &#x3D; 3：线程格在y轴方向的线程块数量。</li>
+<li>gridDim.z &#x3D; 3：线程格在z轴方向的线程块数量。</li>
+<li>线程格大小为3x3x3，即27个线程块。</li>
+</ul>
+<h2 id="blockDim"><a href="#blockDim" class="headerlink" title="blockDim"></a>blockDim</h2><p>blockDim.x、blockDim.y、blockDim.z分别表示线程块中各个维度的大小.<br><code>blockDim.x=4   blockDim.y=4  blockDim.z=4</code></p>
+<h2 id="blockIdx"><a href="#blockIdx" class="headerlink" title="blockIdx"></a>blockIdx</h2><p>blockIdx.x、blockIdx.y、blockIdx.z分别表示线程块的索引，也就是当前线程块儿在线程格中的位置索引。</p>
+<h2 id="threadIdx"><a href="#threadIdx" class="headerlink" title="threadIdx"></a>threadIdx</h2><p>threadIdx.x、threadIdx.y、threadIdx.z分别表示线程的索引，也就是当前线程在线程块儿中的位置索引。</p>
+<p>线程格内的总线程个数<em>N</em>为<code>gridDim.x * gridDim.y * gridDim.z * blockDim.x * blockDim.y * blockDim.z</code></p>
+<p>那么，当前线程块儿中的线程就可以用索引来找到：</p>
+<ul>
+<li>首先要找到blockID，<br>$blockId &#x3D; blockIdx.x + blockIdx.y<em>gridDim.x + blockIdx.z</em>gridDim.x<em>gridDim.y;$<br>解释：首先$blockIdx.z</em>gridDim.x<em>gridDim.y$代表的是当前块儿下方所有的block，加上同一层其他行的其他前方block，$blockIdx.y</em>gridDim.x$,最后加上同行前方的block，$blockIdx.x$。</li>
+<li>其次要找到threadID，方法和找blockID一样，<br>$threadId &#x3D; threadIdx.x + threadIdx.y<em>blockDim.x + threadIdx.z</em>blockDim.x*blockDim.y;$</li>
+<li>然后计算一个线程块儿中有多少个线程，<br>$M &#x3D; blockDim.x<em>blockDim.y</em>blockDim.z$</li>
+<li>最后求得当前的线程序列号idx：<br>$idx &#x3D; threadId + M*blockId;$</li>
+</ul>
+<h1 id="cuda程序的组成"><a href="#cuda程序的组成" class="headerlink" title="cuda程序的组成"></a>cuda程序的组成</h1><ul>
+<li><p>一个 CUDA 程序，我们可以把它分成3个部分：</p>
+</li>
+<li><p>第1部分是： 从主机 (host) 端申请 device memory， <code>cudaMalloc()</code>把要拷贝的内容从 host memory 拷贝到申请的 device memory 里面。</p>
+</li>
+<li><p>第2部分是： 设备端的核函数对拷贝进来的东西进行计算，来得到和实现运算的结果，图4中的 Kernel 就是指在 GPU 上运行的函数。</p>
+</li>
+<li><p>第3部分是： 把结果从 device memory 拷贝到申请的 host memory 里面，并且释放设备端的显存和内存。<code>cudaFree()</code> <code>cudaMemcpy( )</code></p>
+</li>
+</ul>
+<h1 id="cuda的内存模型"><a href="#cuda的内存模型" class="headerlink" title="cuda的内存模型"></a>cuda的内存模型</h1><ul>
+<li>线程处理器 (SP) 对应线程 (thread)。线程有自己的寄存器和local memory。</li>
+<li>多核处理器 (SM) 对应线程块 (thread block)。同一个 block 中的每个 thread 则有共享的一份 share memory。</li>
+<li>设备端 (device) 对应线程块组合体 (grid)。所有的 thread (包括不同 block 的 thread) 都共享一份 global memory。不同的grid有自己的global memory。</li>
+<li>一个线程块block内的所有线程thread可以协作，他们相互独立，并行。计算完毕之后，可以设置一个时钟进行同步。</li>
+<li>一个grid就是block的集合体。</li>
+</ul>
+<h1 id="add-kernel简单实现"><a href="#add-kernel简单实现" class="headerlink" title="add kernel简单实现"></a>add kernel简单实现</h1><ul>
+<li>对比torch和cuda实现的add算子耗时，<code>main.py</code><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">from</span> torch.utils.cpp_extension <span class="keyword">import</span> load</span><br><span class="line"><span class="keyword">import</span> random</span><br><span class="line">cuda_module = load(name=<span class="string">&quot;add2&quot;</span>,</span><br><span class="line">                  sources=[<span class="string">&quot;kernel/add2.cpp&quot;</span>, <span class="string">&quot;kernel/add2_kernel.cu&quot;</span>],</span><br><span class="line">                  verbose=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># c = a + b (shape: [n])</span></span><br><span class="line">n = <span class="number">1024</span> * <span class="number">1024</span> * <span class="number">16</span>  <span class="comment"># 64MB per vector × 3 = 192MB</span></span><br><span class="line"><span class="comment"># n = 1024 * 1024</span></span><br><span class="line">a = torch.rand(n, device=<span class="string">&quot;cuda:0&quot;</span>)</span><br><span class="line">b = torch.rand(n, device=<span class="string">&quot;cuda:0&quot;</span>)</span><br><span class="line">cuda_c = torch.rand(n, device=<span class="string">&quot;cuda:0&quot;</span>)</span><br><span class="line">a_np= np.random.rand(n)</span><br><span class="line">b_np= np.random.rand(n)</span><br><span class="line">ntest = <span class="number">100</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show_time</span>(<span class="params">func</span>):</span><br><span class="line">    times = <span class="built_in">list</span>()</span><br><span class="line">    res = <span class="built_in">list</span>()</span><br><span class="line">    <span class="comment"># GPU warm up</span></span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">100</span>):</span><br><span class="line">        func()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(ntest):</span><br><span class="line">        <span class="comment"># sync the threads to get accurate cuda running time</span></span><br><span class="line">        torch.cuda.synchronize(device=<span class="string">&quot;cuda:0&quot;</span>)</span><br><span class="line">        start_time = time.time()</span><br><span class="line">        r = func()</span><br><span class="line">        torch.cuda.synchronize(device=<span class="string">&quot;cuda:0&quot;</span>)</span><br><span class="line">        end_time = time.time()</span><br><span class="line"></span><br><span class="line">        times.append((end_time-start_time)*<span class="number">1e6</span>)</span><br><span class="line">        res.append(r)</span><br><span class="line">    <span class="keyword">return</span> times, res</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">run_cuda</span>():</span><br><span class="line">    cuda_module.torch_launch_add2(cuda_c, a, b, n)</span><br><span class="line">    <span class="keyword">return</span> cuda_c</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">run_torch</span>():</span><br><span class="line">    <span class="comment"># return None to avoid intermediate GPU memory application</span></span><br><span class="line">    <span class="comment"># for accurate time statistics</span></span><br><span class="line">    <span class="comment"># c = </span></span><br><span class="line">    <span class="comment"># c = a + b</span></span><br><span class="line">    <span class="comment"># print(a)</span></span><br><span class="line">    <span class="keyword">return</span> torch.add(a, b)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Running cuda...&quot;</span>)</span><br><span class="line">cuda_time, res = show_time(run_cuda)</span><br><span class="line"><span class="comment"># print(res)</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Cuda time:  &#123;:.3f&#125;us&quot;</span>.<span class="built_in">format</span>(np.mean(cuda_time)))</span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Running torch...&quot;</span>)</span><br><span class="line">torch_time, res = show_time(run_torch)</span><br><span class="line"><span class="comment"># print(res)</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Torch time:  &#123;:.3f&#125;us&quot;</span>.<span class="built_in">format</span>(np.mean(torch_time)))</span><br></pre></td></tr></table></figure>
+结果：<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Running cuda...</span><br><span class="line">Cuda time:  137.367us</span><br><span class="line">Running torch...</span><br><span class="line">Torch time:  422.926us</span><br></pre></td></tr></table></figure></li>
+<li>cuda add的实现方式 <code>add2_kernel.cu</code></li>
+<li><code>int i = threadIdx.x + blockDim.x * blockIdx.x;</code>是用来为每个线程分配一个全局索引 i，让它对应处理输入数组中的一个元素。</li>
+<li>CUDA kernel 中的逻辑就是：每个线程执行一次这段代码，并根据 threadIdx + blockIdx 来处理自己的数据片段。</li>
+<li>i是当前线程在整个 grid 中的唯一编号（global thread index）。</li>
+<li>下边的写法有两种：当输入数据n远远大于线程总数时，每个线程处理的数据不止一个，就需要for循环的方式。还有就是当n&#x3D;线程总数时，不需要写for循环。<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">__global__ <span class="type">void</span> <span class="title">add2_kernel</span><span class="params">(<span class="type">float</span>* c,<span class="type">const</span> <span class="type">float</span>* a,<span class="type">const</span> <span class="type">float</span>* b,<span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = blockIdx.x * blockDim.x + threadIdx.x; i &lt; n; i += gridDim.x * blockDim.x) &#123;</span><br><span class="line">        c[i] = a[i] + b[i];</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">__global__ <span class="type">void</span> <span class="title">add2_kernel</span><span class="params">(<span class="type">float</span>* c,<span class="type">const</span> <span class="type">float</span>* a,<span class="type">const</span> <span class="type">float</span>* b,<span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">      <span class="comment">//cuda核内实现的都是一个block的</span></span><br><span class="line">      <span class="type">int</span> i = blockIdx.x * blockDim.x + threadIdx.x; </span><br><span class="line">      <span class="keyword">if</span>(i &lt; n)&#123;</span><br><span class="line">          c[i] = a[i] + b[i];</span><br><span class="line">          &#125;</span><br><span class="line">  &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">launch_add2</span><span class="params">(<span class="type">float</span>* c,<span class="type">const</span> <span class="type">float</span>* a,<span class="type">const</span> <span class="type">float</span>* b,<span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">    <span class="comment">//n 为输入的元素个数</span></span><br><span class="line">    <span class="comment">//线程块大小为1024</span></span><br><span class="line">    <span class="comment">//线程格的数量决定以输入元素的个数和线程块的大小</span></span><br><span class="line">    <span class="function">dim3 <span class="title">grid</span><span class="params">((n + <span class="number">1023</span>) / <span class="number">1024</span>)</span></span>; <span class="comment">//+1023是为了向上取整</span></span><br><span class="line">    <span class="function">dim3 <span class="title">block</span><span class="params">(<span class="number">1024</span>)</span></span>;</span><br><span class="line">    add2_kernel&lt;&lt;&lt;grid, block&gt;&gt;&gt;(c, a, b, n);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>如果对这部分内容进行规范化整理，就需要添加内存分配和to device，以及运行结束后的内存释放；</li>
+</ul>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">vecAdd</span><span class="params">(<span class="type">float</span>* A, <span class="type">float</span>* B, <span class="type">float</span>* C, <span class="type">int</span> n)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//申请内存的大小是 n *sizeof(float)，定义3个指针 A_d，B_d，C_d。</span></span><br><span class="line">    <span class="comment">//cudaMalloc 函数需要传入 1. 指针的指针 (指向申请得到的显存的指针)。2. 申请显存的大小。 所以分别传入 &amp;A_d 和 size。同理后面依次传入 &amp;B_d 和 size，&amp;C_d 和 size。</span></span><br><span class="line">    <span class="comment">//cudaMemcpy 函数需要传入 1. 终点的指针。2. 起点的指针。3. 拷贝的大小。4. 模式。 所以分别传入 A_d, A, size, cudaMemcpyHostToDevice。同理后面依次传入 B_d, B, size, cudaMemcpyHostToDevice 和 C, C_d, size, cudaMemcpyHostToDevice。</span></span><br><span class="line">    <span class="comment">//最后把设备端申请的显存都释放掉。cudaFree 函数需要传入设备端申请显存的指针，即 A_d，B_d，C_d。</span></span><br><span class="line">    <span class="type">int</span> size = n * <span class="built_in">sizeof</span>(<span class="type">float</span>);</span><br><span class="line">    <span class="type">float</span>* A_d, *B_d, *C_d;</span><br><span class="line">    <span class="comment">// Transfer A and B to device memory</span></span><br><span class="line">    <span class="built_in">cudaMalloc</span>((<span class="type">void</span> **) &amp;A_d, size);</span><br><span class="line">    <span class="built_in">cudaMemcpy</span>(A_d, A, size, cudaMemcpyHostToDevice);</span><br><span class="line">    <span class="built_in">cudaMalloc</span>((<span class="type">void</span> **) &amp;B_d, size);</span><br><span class="line">    <span class="built_in">cudaMemcpy</span>(B_d, B, size, cudaMemcpyHostToDevice);</span><br><span class="line">    <span class="comment">// Allocate device memory for</span></span><br><span class="line">    <span class="built_in">cudaMalloc</span>((<span class="type">void</span> **) &amp;C_d, size);</span><br><span class="line">    <span class="comment">// Kernel invocation code –to be shown later</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// Transfer C from device to host</span></span><br><span class="line">    <span class="built_in">cudaMemcpy</span>(C, C_d, size, cudaMemcpyDeviceToHost);</span><br><span class="line">    <span class="comment">// Free device memory for A, B, C</span></span><br><span class="line">    <span class="built_in">cudaFree</span>(A_d); <span class="built_in">cudaFree</span>(B_d); <span class="built_in">cudaFree</span>(C_d);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>cuda add函数的torch封装 <code>add2.cpp</code>  <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;torch/extension.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;../include/add2.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">torch_launch_add2</span><span class="params">(torch::Tensor &amp;c,</span></span></span><br><span class="line"><span class="params"><span class="function">                      <span class="type">const</span> torch::Tensor &amp;a,</span></span></span><br><span class="line"><span class="params"><span class="function">                      <span class="type">const</span> torch::Tensor &amp;b,</span></span></span><br><span class="line"><span class="params"><span class="function">                      <span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">launch_add2</span>((<span class="type">float</span> *)c.<span class="built_in">data_ptr</span>(),</span><br><span class="line">                (<span class="type">const</span> <span class="type">float</span> *)a.<span class="built_in">data_ptr</span>(),</span><br><span class="line">                (<span class="type">const</span> <span class="type">float</span> *)b.<span class="built_in">data_ptr</span>(),</span><br><span class="line">                n);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">PYBIND11_MODULE</span>(TORCH_EXTENSION_NAME, m) &#123;</span><br><span class="line">    m.<span class="built_in">def</span>(<span class="string">&quot;torch_launch_add2&quot;</span>,</span><br><span class="line">          &amp;torch_launch_add2,</span><br><span class="line">          <span class="string">&quot;add2 kernel warpper&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>cuda add头文件实现<code>add2.h</code><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">launch_add2</span><span class="params">(<span class="type">float</span> *c,</span></span></span><br><span class="line"><span class="params"><span class="function">    <span class="type">const</span> <span class="type">float</span> *a,</span></span></span><br><span class="line"><span class="params"><span class="function">    <span class="type">const</span> <span class="type">float</span> *b,</span></span></span><br><span class="line"><span class="params"><span class="function">    <span class="type">int</span> n)</span></span>;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h1 id="add-kernel进阶实现"><a href="#add-kernel进阶实现" class="headerlink" title="add kernel进阶实现"></a>add kernel进阶实现</h1><h2 id="1-一次性处理多个元素（Float4-Load-多值处理）"><a href="#1-一次性处理多个元素（Float4-Load-多值处理）" class="headerlink" title="1. 一次性处理多个元素（Float4 Load &#x2F; 多值处理）"></a>1. 一次性处理多个元素（Float4 Load &#x2F; 多值处理）</h2><p>优点：降低全局内存访问次数；更容易达到 memory coalescing（内存合并访问）；带宽利用率更高。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">__global__ <span class="type">void</span> <span class="title">add_vectorized</span><span class="params">(<span class="type">const</span> <span class="type">float</span>* A, <span class="type">const</span> <span class="type">float</span>* B, <span class="type">float</span>* C, <span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">  <span class="type">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;</span><br><span class="line">  <span class="type">int</span> stride = blockDim.x * gridDim.x;</span><br><span class="line">  <span class="keyword">for</span> (; i &lt; n; i += stride * <span class="number">4</span>) &#123;</span><br><span class="line">      <span class="keyword">if</span> (i + <span class="number">3</span> &lt; n) &#123;</span><br><span class="line">          C[i] = A[i] + B[i];</span><br><span class="line">          C[i<span class="number">+1</span>] = A[i<span class="number">+1</span>] + B[i<span class="number">+1</span>];</span><br><span class="line">          C[i<span class="number">+2</span>] = A[i<span class="number">+2</span>] + B[i<span class="number">+2</span>];</span><br><span class="line">          C[i<span class="number">+3</span>] = A[i<span class="number">+3</span>] + B[i<span class="number">+3</span>];</span><br><span class="line">      &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function">__global__ <span class="type">void</span> <span class="title">add_vectorized</span><span class="params">(<span class="type">const</span> <span class="type">float</span>* A, <span class="type">const</span> <span class="type">float</span>* B, <span class="type">float</span>* C, <span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">    float4* A4 = <span class="built_in">reinterpret_cast</span>&lt;float4*&gt;(A);</span><br><span class="line">    float4* B4 = <span class="built_in">reinterpret_cast</span>&lt;float4*&gt;(B);</span><br><span class="line">    float4* C4 = <span class="built_in">reinterpret_cast</span>&lt;float4*&gt;(C);</span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;</span><br><span class="line">    <span class="type">int</span> stride = blockDim.x * gridDim.x;</span><br><span class="line">    <span class="keyword">for</span> (; i &lt; n / <span class="number">4</span>; i += stride) &#123;</span><br><span class="line">        float4 a = A4[i];</span><br><span class="line">        float4 b = B4[i];</span><br><span class="line">        C4[i] = <span class="built_in">make_float4</span>(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="2-手动循环展开（4倍展开）"><a href="#2-手动循环展开（4倍展开）" class="headerlink" title="2.手动循环展开（4倍展开）"></a>2.手动循环展开（4倍展开）</h2><p>优点：提升指令集并行，现在每个线程一次完成4次加法。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">__global__ <span class="type">void</span> <span class="title">add_unrolled</span><span class="params">(<span class="type">float</span>* A, <span class="type">float</span>* B, <span class="type">float</span>* C, <span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">    <span class="type">int</span> idx = blockIdx.x * blockDim.x + threadIdx.x;</span><br><span class="line">    <span class="type">int</span> stride = blockDim.x * gridDim.x;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = idx; i + stride * <span class="number">3</span> &lt; n; i += stride * <span class="number">4</span>) &#123;</span><br><span class="line">        C[i]              = A[i]              + B[i];</span><br><span class="line">        C[i + stride]     = A[i + stride]     + B[i + stride];</span><br><span class="line">        C[i + stride * <span class="number">2</span>] = A[i + stride * <span class="number">2</span>] + B[i + stride * <span class="number">2</span>];</span><br><span class="line">        C[i + stride * <span class="number">3</span>] = A[i + stride * <span class="number">3</span>] + B[i + stride * <span class="number">3</span>];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="3-share-memory-缓存（此处对于加法意义不大）"><a href="#3-share-memory-缓存（此处对于加法意义不大）" class="headerlink" title="3.share memory 缓存（此处对于加法意义不大）"></a>3.share memory 缓存（此处对于加法意义不大）</h2><p>针对于复杂计算，可以将全局内存的数据提前cp到共享内存中，减少数据搬移的开销</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">__global__ <span class="type">void</span> <span class="title">add_shared</span><span class="params">(<span class="type">float</span>* A, <span class="type">float</span>* B, <span class="type">float</span>* C, <span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">extern</span> __shared__ <span class="type">float</span> shared[];</span><br><span class="line"></span><br><span class="line">    <span class="type">float</span>* sA = shared;</span><br><span class="line">    <span class="type">float</span>* sB = &amp;shared[blockDim.x];</span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> tid = threadIdx.x;</span><br><span class="line">    <span class="type">int</span> gid = blockIdx.x * blockDim.x + tid;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (gid &lt; n) &#123;</span><br><span class="line">        sA[tid] = A[gid];</span><br><span class="line">        sB[tid] = B[gid];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    __syncthreads();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (gid &lt; n) &#123;</span><br><span class="line">        C[gid] = sA[tid] + sB[tid];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><p>  [1]<a target="_blank" rel="noopener" href="https://www.cnblogs.com/shuimuqingyang/p/15846584.html">cuda核函数逐步拆解</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2025/07/31/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/cuda%E4%BC%98%E5%8C%96%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" data-id="cmdwxao67000o5ox9gnh50zbl" data-title="resize_cuda" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cuda%E5%8A%A0%E9%80%9F/" rel="tag">cuda加速</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2025/07/31/tensorrt-plugin/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          tensorrt-plugin
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2025/07/31/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/resize-cuda/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">resize_cuda</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/markdown/">markdown</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%91%A8%E8%AE%A1%E5%88%92/">周计划</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/">推理加速</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/FLOPS/" rel="tag">FLOPS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Transformer/" rel="tag">Transformer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/attention/" rel="tag">attention</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/conv/" rel="tag">conv</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/cuda%E5%8A%A0%E9%80%9F/" rel="tag">cuda加速</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/float/" rel="tag">float</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/img-preprocess/" rel="tag">img_preprocess</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/int/" rel="tag">int</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/kv-cache/" rel="tag">kv-cache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linformer/" rel="tag">linformer</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/profiling/" rel="tag">profiling</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/vit/" rel="tag">vit</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/vit-pytorch/" rel="tag">vit-pytorch</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/week1/" rel="tag">week1</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AE%9A%E7%82%B9%E6%95%B0/" rel="tag">定点数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B0%8F%E6%8A%80%E5%B7%A7/" rel="tag">小技巧</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%98%BE%E5%AD%98%E5%8D%A0%E7%94%A8/" rel="tag">显存占用</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%B5%AE%E7%82%B9%E6%95%B0/" rel="tag">浮点数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6/" rel="tag">算法复杂度</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BF%90%E7%AE%97%E9%87%8F/" rel="tag">运算量</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/FLOPS/" style="font-size: 10px;">FLOPS</a> <a href="/tags/Transformer/" style="font-size: 10px;">Transformer</a> <a href="/tags/attention/" style="font-size: 20px;">attention</a> <a href="/tags/conv/" style="font-size: 10px;">conv</a> <a href="/tags/cuda%E5%8A%A0%E9%80%9F/" style="font-size: 20px;">cuda加速</a> <a href="/tags/float/" style="font-size: 10px;">float</a> <a href="/tags/img-preprocess/" style="font-size: 10px;">img_preprocess</a> <a href="/tags/int/" style="font-size: 10px;">int</a> <a href="/tags/kv-cache/" style="font-size: 10px;">kv-cache</a> <a href="/tags/linformer/" style="font-size: 10px;">linformer</a> <a href="/tags/profiling/" style="font-size: 10px;">profiling</a> <a href="/tags/vit/" style="font-size: 20px;">vit</a> <a href="/tags/vit-pytorch/" style="font-size: 20px;">vit-pytorch</a> <a href="/tags/week1/" style="font-size: 10px;">week1</a> <a href="/tags/%E5%AE%9A%E7%82%B9%E6%95%B0/" style="font-size: 10px;">定点数</a> <a href="/tags/%E5%B0%8F%E6%8A%80%E5%B7%A7/" style="font-size: 10px;">小技巧</a> <a href="/tags/%E6%98%BE%E5%AD%98%E5%8D%A0%E7%94%A8/" style="font-size: 10px;">显存占用</a> <a href="/tags/%E6%B5%AE%E7%82%B9%E6%95%B0/" style="font-size: 10px;">浮点数</a> <a href="/tags/%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6/" style="font-size: 10px;">算法复杂度</a> <a href="/tags/%E8%BF%90%E7%AE%97%E9%87%8F/" style="font-size: 10px;">运算量</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2025/07/">July 2025</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2025/07/31/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/kvcache/">kv-cache-源码解读</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/31/tensorrt-plugin/">tensorrt-plugin</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/31/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/cuda%E4%BC%98%E5%8C%96%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">resize_cuda</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/31/%E6%8E%A8%E7%90%86%E5%8A%A0%E9%80%9F/resize-cuda/">resize_cuda</a>
+          </li>
+        
+          <li>
+            <a href="/2025/07/30/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E6%84%9F%E7%9F%A5%E9%A2%84%E5%A4%84%E7%90%86/">img_preproc</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2025 sunhanyu<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
